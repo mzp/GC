@@ -1,39 +1,54 @@
-Require Import Sets.Finite_sets.
-Require Import Sets.Ensembles.
+(* -#- mode:coq coding:utf-8 -#- *)
+Require Import Lists.ListSet.
+
+(* 集合に対する操作 *)
+Definition In {A : Type} (elem : A) (sets : set A) :=
+  set_In elem sets.
+Definition Included {A : Type} (B C : set A) : Prop :=
+  forall x, In x B -> In x C.
+Definition x_dec A :=
+  forall x y : A, {x = y} + {x <> y}.
+Definition Union {A : Type} (dec : x_dec A) (B C : set A) : set A :=
+  set_union dec B C.
+
+(* メモリの定義 *)
 Inductive mark :=
-  | Marked : mark
+  | Marked   : mark
   | Unmarked : mark.
 
-Definition In {A : Type} elem sets := Sets.Ensembles.In A sets elem.
-Implicit Arguments Sets.Ensembles.Included [U].
-Implicit Arguments Sets.Ensembles.Add [U].
-Implicit Arguments Sets.Ensembles.Union [U].
-Implicit Arguments Sets.Ensembles.Intersection [U].
-Implicit Arguments Sets.Finite_sets.Finite [U].
-
-Record Mem (A : Type) := mkMem {
-  roots   : Ensemble A;
-  nodes   : Ensemble A;
-  frees   : Ensemble A;
+Record Mem {A : Type} := mkMem {
+  roots   : set A;
+  nodes   : set A;
+  frees   : set A;
   marker  : A -> mark;
   pointer : A -> option A
 }.
-Implicit Arguments roots [A].
-Implicit Arguments nodes [A].
-Implicit Arguments frees [A].
-Implicit Arguments marker [A].
+(*Implicit Arguments roots   [A].
+Implicit Arguments nodes   [A].
+Implicit Arguments frees   [A].
+Implicit Arguments marker  [A].
 Implicit Arguments pointer [A].
-Implicit Arguments mkMem [A].
+Implicit Arguments mkMem   [A].
+*)
 
-Inductive Closure (A : Type) (pointer : A -> option A) (root : A) : Ensemble A :=
-  | CRefl  : In root (Closure A pointer root)
-  | CTrans : forall n m, Some n = pointer root -> In m (Closure A pointer n) -> In m (Closure A pointer root).
+Require Import Sets.Ensembles.
+Check set.
+Check Ensemble.
+Print Ensemble.
+Print set.
+Inductive Closure : forall (A : Type), (A -> option A) -> A -> set A :=
+  | CRefl  : forall A f x,
+      In x (Closure A f x).
+(*  | CTrans :
+      forall n m, Some n = pointer root ->
+        In m (Closure A pointer n) ->
+        In m (Closure A pointer root).*)
 
-Inductive Closures (A : Type) (pointer : A -> option A) (roots : Ensemble A) : Ensemble A :=
+Inductive Closures (A : Type) (pointer : A -> option A) (roots : set A) : set A :=
   | Closures_intro  : forall n m, In m roots -> In n (Closure A pointer m) -> In n (Closures A pointer roots).
 Implicit Arguments Closures [A].
 
-Inductive Marks (A : Type) (marker : A -> mark) (m : mark) (xs : Ensemble A) : Ensemble A :=
+Inductive Marks (A : Type) (marker : A -> mark) (m : mark) (xs : set A) : set A :=
   | Marks_intro : forall x, In x xs -> marker x = m -> In x (Marks A marker m xs).
 
 Definition Marker {A : Type} (m1 m2 : Mem A) : Prop :=
@@ -122,7 +137,7 @@ inversion H10.
  apply Intersection_intro; auto.
 Qed.
 
-Lemma disjoint_include: forall A (B C D : Ensemble A),
+Lemma disjoint_include: forall A (B C D : set A),
   Disjoint A B C -> Included D C -> Disjoint A B D.
 Proof.
 intros.
