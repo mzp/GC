@@ -1,0 +1,5 @@
+DefineCommandVars()
+
+open CoqBuildRule
+
+.SUBDIRS: .
