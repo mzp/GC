@@ -1,10 +1,15 @@
 FILES[] =
 	object
 
-.DEFAULT: $(CoqProof $(FILES))
+.PHONY: clean graph doc all
+.DEFAULT: all
 
-.PHONY: clean graph
+all: $(CoqProof $(FILES))
 
 clean:
 	rm -rf *.vo *.glob *~ *.omc .omakedb .omakedb.lock
+
+doc: $(addsuffix .v, $(FILES))
+	mkdir -p doc
+	coqdoc -d doc *.v
 

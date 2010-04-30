@@ -1,27 +1,28 @@
 Require Import Sets.Ensembles.
 
-(* operations of set  *)
+(** * operations of set *)
 Definition set A := Ensemble A.
 Definition In {A : Type} elem sets := Sets.Ensembles.In A sets elem.
 Implicit Arguments Sets.Ensembles.Included [U].
 Implicit Arguments Sets.Ensembles.Union [U].
 
-(* definition of memory *)
+(** * Memory *)
 Inductive mark :=
   | Marked   : mark
   | Unmarked : mark.
 
 Record Mem {A : Type} := mkMem {
-  roots   : set A;          (* root objects *)
-  nodes   : set A;          (* all objects in memory *)
-  frees   : set A;          (* free list *)
-  marker  : A -> mark;      (* get mark of the object *)
-  pointer : A -> option A   (* get next object of the object *)
+  roots   : set A;          (** root objects *)
+  nodes   : set A;          (** all objects in memory *)
+  frees   : set A;          (** free list *)
+  marker  : A -> mark;      (** get mark of the object *)
+  pointer : A -> option A   (** get next object of the object *)
 }.
 
-(* Definition of GC *)
+(** * GC *)
 
-(* [Closure A next x] means a set: {x, next x, next (next x), ... }. *)
+(** ** closure *)
+(** [Closure A next x] means a set: {x, next x, next (next x), ... }. *)
 Inductive Closure (A : Type) (next : A -> option A) : A -> set A :=
   | CRoot  : forall x,
     In x (Closure A next x)
@@ -33,23 +34,40 @@ Inductive Closures (A : Type) (next : A -> option A) (roots : set A) : set A :=
     In m roots -> In n (Closure A next m) -> In n (Closures A next roots).
 Implicit Arguments Closures [A].
 
-Inductive Marks (A : Type) (marker : A -> mark) (m : mark) (xs : set A) : set A :=
-  | Marks_intro : forall x, In x xs -> marker x = m -> In x (Marks A marker m xs).
+Definition ClosuresM {A : Type} (m : Mem) :=
+  Closures (A:=A) (pointer m) (roots m).
 
-Definition Marker {A : Type} (m1 m2 : Mem) : Prop :=
+(** ** Marker utility *)
+Inductive Marks (A : Type) (marker : A -> mark) (m : mark) (xs : set A) : set A :=
+  | Marks_intro : forall x,
+    In x xs -> marker x = m -> In x (Marks A marker m xs).
+
+Definition MarksM {A : Type} (ma : mark) (m : Mem) :=
+  Marks A (marker m) ma (nodes m).
+
+(** ** main GC *)
+(** marker *)
+Definition Marker {A : Type} (m1 m2 : Mem (A:=A)) : Prop :=
   roots   m1 = roots   m2 /\
   nodes   m1 = nodes   m2 /\
   frees   m1 = frees   m2 /\
   pointer m1 = pointer m2 /\
-  Included (Closures (pointer m2) (roots m2)) (Marks A (marker m2) Marked (nodes m2)).
+  Included (ClosuresM m2) (MarksM Marked m2).
 
+(** sweeper *)
 Definition Sweeper {A : Type} (m1 m2 : Mem) : Prop :=
   roots   m1 = roots   m2 /\
   nodes   m1 = nodes   m2 /\
   pointer m1 = pointer m2 /\
-  frees   m2 = Union (frees m1) (Marks A (marker m1) Unmarked (nodes m1)) /\
-  forall n, In n (nodes m2) -> marker m2 n = Unmarked.
+  frees   m2 = Union (frees m1) (MarksM Unmarked m1) /\
+  forall (n : A), In n (nodes m2) -> marker m2 n = Unmarked.
 
+(** mark & sweep GC *)
+Definition GC {A : Type} (m1 m2 : Mem (A:=A)) := exists m : Mem,
+  Marker m1 m /\ Sweeper m m2.
+
+(** * Spec *)
+(** invariant *)
 Definition invariant {A : Type} (m : Mem) : Prop :=
   Included (roots m) (nodes m) /\
   Included (frees m) (nodes m) /\
@@ -94,16 +112,28 @@ apply (H12 _ _ (marker m1) Unmarked _).
 tauto.
 Qed.
 
-Definition frees_invariant {A : Type} (m : Mem) :=
+Theorem gc_invariant : forall A (m1 m2 : Mem (A:=A)),
+  invariant m1 -> GC m1 m2 -> invariant m2.
+Proof.
+unfold GC.
+intros.
+decompose [ex and] H0; auto.
+apply marker_invariant in H2; auto.
+apply sweeper_invariant in H3; auto.
+Qed.
+
+(** safety *)
+Definition Safety {A : Type} (m : Mem) : Prop :=
   Disjoint A (frees m) (Closures (pointer m) (roots m)).
 
-Definition marks_all {A : Type} (m : Mem) :=
-  Disjoint A (Marks A (marker m) Unmarked (nodes m)) (Closures (pointer m) (roots m)).
+Definition MarksAll {A : Type} (m : Mem) : Prop :=
+  Disjoint A (Marks A (marker m) Unmarked (nodes m))
+             (Closures (pointer m) (roots m)).
 
-Lemma sweeper_frees : forall A (m1 m2 : Mem (A:=A)),
-  frees_invariant m1 -> marks_all m1 -> Sweeper m1 m2 -> frees_invariant m2.
+Lemma sweeper_safety : forall A (m1 m2 : Mem (A:=A)),
+  Safety m1 -> MarksAll m1 -> Sweeper m1 m2 -> Safety m2.
 Proof.
-unfold frees_invariant, marks_all, Sweeper.
+unfold Safety, MarksAll, Sweeper.
 intros.
 decompose [and] H1.
 rewrite <- H2, <- H3, H5.
@@ -134,11 +164,10 @@ inversion H2.
 apply Intersection_intro; auto.
 Qed.
 
-
-Lemma marker_frees : forall A (m1 m2 : Mem (A:=A)),
-  frees_invariant m1 -> Marker m1 m2 -> frees_invariant m2 /\ marks_all m2.
+Lemma marker_safety : forall A (m1 m2 : Mem (A:=A)),
+  Safety m1 -> Marker m1 m2 -> Safety m2 /\ MarksAll m2.
 Proof.
-unfold frees_invariant, Marker, marks_all.
+unfold Safety, Marker, MarksAll.
 split; intros.
  decompose [and] H0.
  rewrite <- H1, <- H2, <- H4.
@@ -156,37 +185,13 @@ split; intros.
  inversion H14.
 Qed.
 
-Definition GC {A : Type} (m1 m2 : Mem (A:=A)) := exists m : Mem,
-  Marker m1 m /\ Sweeper m m2.
-Theorem gc_invariant : forall A (m1 m2 : Mem (A:=A)),
-  invariant m1 -> GC m1 m2 -> invariant m2.
+Theorem gc_safety: forall A (m1 m2 : Mem (A:=A)),
+  Safety m1 -> GC m1 m2 -> Safety m2.
 Proof.
 unfold GC.
 intros.
-decompose [ex and] H0.
- apply marker_invariant in H2.
- apply sweeper_invariant in H3.
- tauto.
-
- tauto.
-
- tauto.
-Qed.
-
-Theorem gc_free: forall A (m1 m2 : Mem (A:=A)),
-  frees_invariant m1 -> GC m1 m2 -> frees_invariant m2.
-Proof.
-unfold GC.
-intros.
-decompose [ex and] H0.
- apply marker_frees in H2.
- decompose [and] H2.
- apply sweeper_frees in H3.
-  tauto.
-
-  tauto.
-
- tauto.
-
- tauto.
+decompose [ex and] H0; auto.
+apply marker_safety in H2; auto.
+decompose [and] H2.
+apply sweeper_safety in H3; auto.
 Qed.
