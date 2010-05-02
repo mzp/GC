@@ -1,14 +1,13 @@
 (* -#- mode:coq coding:utf-8 -#- *)
 Require Import Lists.ListSet.
 Require Import Lists.List.
+Require Import Util.
 
 (** * operations of set *)
 Definition In {A : Type} (elem : A) (sets : set A) :=
   set_In elem sets.
 Definition Included {A : Type} (B C : set A) : Prop :=
   forall x, In x B -> In x C.
-Definition x_dec A :=
-  forall x y : A, {x = y} + {x <> y}.
 Definition Union {A : Type} (dec : x_dec A) (B C : set A) : set A :=
   set_union dec B C.
 
