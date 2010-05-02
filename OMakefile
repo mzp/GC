@@ -1,5 +1,6 @@
 FILES[] =
-	object
+	GC
+	GC_fact
 
 .PHONY: clean graph doc all
 .DEFAULT: all
