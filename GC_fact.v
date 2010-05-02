@@ -10,8 +10,9 @@ Definition invariant {A : Type} (m : Mem) : Prop :=
   Included (frees m) (nodes m) /\
   forall (x y :A), In x (nodes m) -> Some y = pointer m x -> In y (nodes m).
 
-Lemma marker_invariant : forall A (m1 m2 : Mem (A:=A)),
-  Marker m1 m2 -> invariant m1 -> invariant m2.
+
+Lemma marker_invariant : forall A dec (m1 m2 : Mem (A:=A)),
+  Marker dec m1 m2 -> invariant m1 -> invariant m2.
 Proof.
 unfold Marker, invariant.
 intros.
@@ -26,7 +27,7 @@ Lemma Marks_include : forall A xs marker m,
 Proof.
 unfold Included, marks, In, set_In.
 intros.
-apply filter_In in H.
+apply filter_dec_In in H.
 decompose [and] H.
 tauto.
 Qed.
@@ -63,24 +64,25 @@ apply sweeper_invariant in H3; auto.
 Qed.
 
 (** safety *)
-Definition disjoint (P Q : Prop) :=
-  (P -> ~ Q) /\ (Q -> ~ P).
+Definition Disjoint {A : Type} (xs ys : set A) := forall x,
+  (set_In x xs -> ~ set_In x ys) /\
+  (set_In x ys -> ~ set_In x xs).
 
-Definition Safety {A : Type} (m : Mem) : Prop := forall x : A,
-  disjoint (In x (frees m)) (ConnectM m x).
+Definition Safety {A : Type} (dec : x_dec A) (m : Mem) : Prop :=
+  Disjoint (frees m) (closuresM dec m).
 
-Definition MarksAll {A : Type} (m : Mem) : Prop := forall x : A,
-  disjoint (In x (marksM Unmarked m)) (ConnectM m x).
+Definition MarksAll {A : Type} (dec : x_dec A) (m : Mem) : Prop :=
+  Disjoint (marksM Unmarked m) (closuresM dec m).
 
 Lemma sweeper_safety : forall A (dec : x_dec A) (m1 m2 : Mem (A:=A)),
-  Safety m1 -> MarksAll m1 -> Sweeper dec m1 m2 -> Safety m2.
+  Safety dec m1 -> MarksAll dec m1 -> Sweeper dec m1 m2 -> Safety dec m2.
 Proof.
-unfold Safety, MarksAll, Sweeper, ConnectM, disjoint, Union, In.
+unfold Safety, MarksAll, Sweeper, closuresM, Disjoint, Union, In.
 intros.
 decompose [and] (H x).
 decompose [and] (H0 x).
 decompose [and] H1.
-rewrite <- H6, <- H7, H9.
+rewrite <- H6, <- H7, <- H8, H9.
 split; intros.
 apply set_union_elim in H10.
  decompose [or] H10.
@@ -100,14 +102,24 @@ apply set_union_elim in H10.
   contradiction.
 Qed.
 
-Lemma marker_safety : forall A (m1 m2 : Mem (A:=A)),
-  Safety m1 -> Marker m1 m2 -> Safety m2 /\ MarksAll m2.
+Lemma marks_In : forall A m ma (x : A),
+  In x (marksM ma m) -> marker m x = ma.
 Proof.
-unfold Safety, MarksAll, Marker, ConnectM, disjoint, Union, In.
+unfold In, marksM, marks.
+intros.
+apply filter_dec_In in H.
+decompose [and] H.
+assumption.
+Qed.
+
+Lemma marker_safety : forall A (dec : x_dec A) (m1 m2 : Mem (A:=A)),
+  Safety dec m1 -> Marker dec m1 m2 -> Safety dec m2 /\ MarksAll dec m2.
+Proof.
+unfold Safety, MarksAll, Marker, closuresM, Disjoint, Union, In, Included.
 intros.
 decompose [and] H0.
-rewrite <- H1, <- H2, <- H4.
-rewrite <- H1, <-H4 in H6.
+rewrite <- H1, <- H2,<- H3, <- H4.
+rewrite <- H1, <- H3, <-H4 in H6.
 repeat split; intros; decompose [and] (H x); intro.
  apply H8 in H9.
  contradiction.
@@ -115,30 +127,21 @@ repeat split; intros; decompose [and] (H x); intro.
  apply H7 in H9.
  contradiction.
 
- generalize H9; intro.
  apply (H6 x) in H9.
- unfold marksM, marks in H5.
- apply filter_In in H5.
- decompose [and] H5.
- destruct (mark_dec (marker m2 x)).
-  rewrite H9 in e.
-  discriminate.
-
-  discriminate.
+ apply marks_In in H5.
+ apply marks_In in H9.
+ rewrite H9 in H5.
+ discriminate.
 
  apply H6 in H5.
- unfold marksM, marks in H9.
- apply filter_In in H9.
- decompose [and] H9.
- destruct (mark_dec (marker m2 x)).
-  rewrite H5 in e.
-  discriminate.
-
-  discriminate.
+ apply marks_In in H5.
+ apply marks_In in H9.
+ rewrite H9 in H5.
+ discriminate.
 Qed.
 
 Theorem gc_safety: forall A (dec : x_dec A) (m1 m2 : Mem (A:=A)),
-  Safety m1 -> GC dec m1 m2 -> Safety m2.
+  Safety dec m1 -> GC dec m1 m2 -> Safety dec m2.
 Proof.
 unfold GC.
 intros.

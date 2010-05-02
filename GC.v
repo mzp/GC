@@ -2,6 +2,7 @@
 Require Import Lists.ListSet.
 Require Import Lists.List.
 Require Import Util.
+Require Import Closure.
 
 (** * operations of set *)
 Definition In {A : Type} (elem : A) (sets : set A) :=
@@ -32,35 +33,29 @@ Record Mem {A : Type} := mkMem {
 (** * GC *)
 
 (** ** closure *)
-(** [Closure A next x] means a set: {x, next x, next (next x), ... }. *)
-Inductive Connect (A : Type) (next : A -> option A) (root : A) : A -> Prop:=
-  | CRoot  :
-    Connect A next root root
-  | CTrans : forall x y,
-    Some y = next x -> Connect A next y x -> Connect A next root x.
+Definition closures (A : Type) (dec : x_dec A) (next : A -> option A) (roots : set A) (nodes : set A) : set A :=
+  fold_left (set_union dec)
+            (map (fun x => closure A dec next x nodes) roots)
+                 (empty_set A).
 
-Inductive ConnectS (A : Type) (next : A -> option A) (roots : set A) : A -> Prop :=
-  | ConnectSet_intro  : forall n m,
-    In m roots -> Connect A next m n -> ConnectS A next roots n.
-
-Definition ConnectM {A : Type} (m : Mem) :=
-  ConnectS A (pointer m) (roots m).
+Definition closuresM {A : Type} (dec : x_dec A) (m : Mem) :=
+  closures A dec (pointer m) (roots m) (nodes m).
 
 (** ** Marker utility *)
 Definition marks (A : Type) (marker : A -> mark) (ma : mark) (xs : set A) : set A :=
-  filter (fun x => if mark_dec (marker x) ma then true else false) xs.
+  filter_dec (fun x => mark_dec (marker x) ma) xs.
 
 Definition marksM {A : Type} (ma : mark) (m : Mem) :=
   marks A (marker m) ma (nodes m).
 
 (** ** main GC *)
 (** marker *)
-Definition Marker {A : Type} (m1 m2 : Mem (A:=A)) : Prop :=
+Definition Marker {A : Type} (dec : x_dec A) (m1 m2 : Mem (A:=A)) : Prop :=
   roots   m1 = roots   m2 /\
   nodes   m1 = nodes   m2 /\
   frees   m1 = frees   m2 /\
   pointer m1 = pointer m2 /\
-  forall x, ConnectM m2 x -> marker m2 x = Marked.
+  Included (closuresM dec m2) (marksM Marked m2).
 
 (** sweeper *)
 Definition Sweeper {A : Type} (dec : x_dec A) (m1 m2 : Mem) : Prop :=
@@ -72,4 +67,4 @@ Definition Sweeper {A : Type} (dec : x_dec A) (m1 m2 : Mem) : Prop :=
 
 (** mark & sweep GC *)
 Definition GC {A : Type} (dec : x_dec A) (m1 m2 : Mem (A:=A)) := exists m : Mem,
-  Marker m1 m /\ Sweeper dec m m2.
+  Marker dec m1 m /\ Sweeper dec m m2.
