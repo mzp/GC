@@ -4,17 +4,16 @@ Require Import Lists.List.
 Require Import Util.
 Require Import GC.
 
-(** invariant *)
-Definition invariant {A : Type} (m : Mem) : Prop :=
+(** Invariant *)
+Definition Invariant {A : Type} (m : Mem) : Prop :=
   Included (roots m) (nodes m) /\
   Included (frees m) (nodes m) /\
   forall (x y :A), In x (nodes m) -> Some y = pointer m x -> In y (nodes m).
 
-
 Lemma marker_invariant : forall A dec (m1 m2 : Mem (A:=A)),
-  Marker dec m1 m2 -> invariant m1 -> invariant m2.
+  Marker dec m1 m2 -> Invariant m1 -> Invariant m2.
 Proof.
-unfold Marker, invariant.
+unfold Marker, Invariant.
 intros.
 decompose [and] H.
 decompose [and] H0.
@@ -33,9 +32,9 @@ tauto.
 Qed.
 
 Lemma sweeper_invariant: forall A (dec : x_dec A) (m1 m2 : Mem (A:=A)),
-  Sweeper dec m1 m2 -> invariant m1 -> invariant m2.
+  Sweeper dec m1 m2 -> Invariant m1 -> Invariant m2.
 Proof.
-unfold Sweeper, invariant, Union.
+unfold Sweeper, Invariant, Union.
 intros.
 decompose [and] H.
 decompose [and] H0.
@@ -54,7 +53,7 @@ decompose [or] H7.
 Qed.
 
 Theorem gc_invariant : forall A (dec : x_dec A) (m1 m2 : Mem (A:=A)),
-  invariant m1 -> GC dec m1 m2 -> invariant m2.
+  Invariant m1 -> GC dec m1 m2 -> Invariant m2.
 Proof.
 unfold GC.
 intros.
@@ -65,8 +64,7 @@ Qed.
 
 (** safety *)
 Definition Disjoint {A : Type} (xs ys : set A) := forall x,
-  (set_In x xs -> ~ set_In x ys) /\
-  (set_In x ys -> ~ set_In x xs).
+  (set_In x xs -> ~ set_In x ys) /\ (set_In x ys -> ~ set_In x xs).
 
 Definition Safety {A : Type} (dec : x_dec A) (m : Mem) : Prop :=
   Disjoint (frees m) (closuresM dec m).
