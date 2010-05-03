@@ -21,12 +21,18 @@ Definition sweeper {A : Type} (dec : x_dec A) (m : Mem) : Mem :=
           (pointer m).
 
 Theorem marker_correct: forall A (dec : x_dec A) m1 m2,
-  Marker dec m1 m2 <-> m2 = marker dec m1.
+  m2 = marker dec m1 -> Marker dec m1 m2.
 Proof.
-unfold Marker, marker.
-split; intros.
- decompose [and] H.
- rewrite (destruct_mem _ m2).
- rewrite H0,H2,H1,H3.
- unfold Included in H5.
+unfold marker, Marker.
+intros.
+destruct m2.
+inversion H.
+repeat split; auto.
+unfold closuresM, marksM, Included.
+simpl.
+intros.
+unfold marks.
+induction (GC.nodes m1); simpl.
+ unfold closures in H0.
+ simpl in H0.
 
