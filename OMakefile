@@ -3,6 +3,7 @@ FILES[] =
 	Closure
 	GC
 	GC_fact
+	GC_impl
 
 .PHONY: clean graph doc all
 .DEFAULT: all

@@ -1,71 +1,32 @@
-Require Import GC.
 Require Import Lists.ListSet.
 Require Import Lists.List.
+Require Import GC.
 Require Import Util.
-Require Import Recdef.
 
-Variable A : Type.
-Variable dec : x_dec A.
+Definition marker {A : Type} (dec : x_dec A) (m : Mem) :=
+  let marks :=
+    closuresM dec m
+  in
+    mkMem A (roots m)
+            (nodes m)
+            (frees m)
+            (fun x => if set_In_dec dec x marks then Marked else Unmarked)
+            (pointer m).
 
-Lemma remove_dec : forall x xs,
-  set_In x xs ->
-  length (set_remove dec x xs) < length xs.
+Definition sweeper {A : Type} (dec : x_dec A) (m : Mem) : Mem :=
+  mkMem A (roots m)
+          (nodes m)
+          (set_union dec (frees m) (filter_dec (fun n => mark_dec (GC.marker m n) Marked) @@ nodes m))
+          (fun _ => Unmarked)
+          (pointer m).
+
+Theorem marker_correct: forall A (dec : x_dec A) m1 m2,
+  Marker dec m1 m2 <-> m2 = marker dec m1.
 Proof.
-intros.
-induction xs.
- inversion H.
-
- simpl.
- destruct (dec x a).
-  apply Lt.lt_n_Sn.
-
-  simpl.
-  apply Lt.lt_n_S.
-  apply IHxs.
-  inversion H.
-   rewrite H0 in n.
-   assert False.
-    apply n.
-    reflexivity.
-
-    contradiction.
-
-   apply H0.
-Qed.
-
-Function closure (next : A -> option A) (x : A) (xs : set A) {measure length xs} : set A :=
-  match xs with
-    | nil =>
-      empty_set A
-    | _ =>
-      if set_In_dec dec x xs then
-        match next x with
-          | None   => empty_set A
-          | Some y => closure next y (set_remove dec x xs)
-        end
-      else
-        empty_set A
-  end.
-Proof.
-intros.
-simpl.
-destruct (dec x a).
- apply Lt.lt_n_Sn.
-
- simpl.
- apply Lt.lt_n_S.
- apply remove_dec.
- destruct (set_In_dec dec x (a :: l)).
-  inversion s.
-   rewrite H in n.
-   assert False.
-    apply n.
-    reflexivity.
-
-    contradiction.
-
-    tauto.
-
-  discriminate.
-Qed.
+unfold Marker, marker.
+split; intros.
+ decompose [and] H.
+ rewrite (destruct_mem _ m2).
+ rewrite H0,H2,H1,H3.
+ unfold Included in H5.
 

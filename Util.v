@@ -1,4 +1,12 @@
 Require Import List.
+Require Import Sumbool.
+
+Definition atat {A B:Type} (f: A -> B) x := f x.
+Infix "@@" := atat (at level 60).
+
+Definition doll {A B C: Type} (g: B -> C) (f: A -> B) (x: A) := g (f x).
+Infix "$" := doll (at level 60).
+
 Definition x_dec A :=
   forall x y : A, {x = y} + {x <> y}.
 

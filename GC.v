@@ -30,6 +30,16 @@ Record Mem {A : Type} := mkMem {
   pointer : A -> option A   (** get next object of the object *)
 }.
 
+Lemma destruct_mem : forall A m,
+  m = mkMem A (roots m) (nodes m) (frees m) (marker m) (pointer m).
+Proof.
+intros.
+destruct m.
+simpl.
+reflexivity.
+Qed.
+
+
 (** * GC *)
 
 (** ** closure *)
