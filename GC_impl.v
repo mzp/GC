@@ -17,7 +17,7 @@ Definition marker {A : Type} (dec : x_dec A) (m : Mem) :=
 Definition sweeper {A : Type} (dec : x_dec A) (m : Mem) : Mem :=
   mkMem A (roots m)
           (nodes m)
-          (set_union dec (frees m) (filter_dec (fun n => mark_dec (GC.marker m n) Marked) @@ nodes m))
+          (set_union dec (frees m) (filter_dec (fun n => mark_dec (GC.marker m n) Unmarked) @@ nodes m))
           (fun _ => Unmarked)
           (pointer m).
 
@@ -43,3 +43,14 @@ apply filter_dec_In_intro.
 
   contradiction.
 Qed.
+
+Theorem sweeper_correct: forall A (dec : x_dec A) m1 m2,
+  m2 = sweeper dec m1 -> Sweeper dec m1 m2.
+Proof.
+unfold sweeper, Sweeper.
+intros.
+destruct m2; simpl.
+inversion H.
+repeat split; auto.
+Qed.
+
