@@ -26,7 +26,7 @@ Lemma Marks_include : forall A xs marker m,
 Proof.
 unfold Included, marks, In, set_In.
 intros.
-apply filter_dec_In in H.
+apply filter_dec_In_elim in H.
 decompose [and] H.
 tauto.
 Qed.
@@ -105,7 +105,7 @@ Lemma marks_In : forall A m ma (x : A),
 Proof.
 unfold In, marksM, marks.
 intros.
-apply filter_dec_In in H.
+apply filter_dec_In_elim in H.
 decompose [and] H.
 assumption.
 Qed.

@@ -43,11 +43,6 @@ Qed.
 (** * GC *)
 
 (** ** closure *)
-Definition closures (A : Type) (dec : x_dec A) (next : A -> option A) (roots : set A) (nodes : set A) : set A :=
-  fold_left (set_union dec)
-            (map (fun x => closure A dec next x nodes) roots)
-                 (empty_set A).
-
 Definition closuresM {A : Type} (dec : x_dec A) (m : Mem) :=
   closures A dec (pointer m) (roots m) (nodes m).
 

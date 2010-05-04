@@ -10,7 +10,7 @@ Infix "$" := doll (at level 60).
 Definition x_dec A :=
   forall x y : A, {x = y} + {x <> y}.
 
-Fixpoint filter_dec {A : Type} {P Q: A -> Prop} (dec : forall x,{P x} + {Q x}) (l : list A) : list A :=
+Fixpoint filter_dec {A : Type} {P : A -> Prop} (dec : forall x,{P x} + {~ P x}) (l : list A) : list A :=
   match l with
     | nil => nil
     | x :: xs =>
@@ -20,10 +20,10 @@ Fixpoint filter_dec {A : Type} {P Q: A -> Prop} (dec : forall x,{P x} + {Q x}) (
         filter_dec dec xs
   end.
 
-Lemma filter_dec_In : forall {A: Type} {P Q: A -> Prop} (f : forall x, {P x} + {Q x}) x l,
+Lemma filter_dec_In_elim : forall {A: Type} {P : A -> Prop} (f : forall x, {P x} + {~ P x}) x l,
   In x (filter_dec f l) -> In x l /\ P x.
 Proof.
-intros A P Q f.
+intros A P f.
 induction l; simpl.
  intro H; elim H.
 
@@ -38,3 +38,27 @@ induction l; simpl.
   split; [ right | idtac ]; assumption.
 Qed.
 
+Lemma filter_dec_In_intro : forall {A: Type} {P: A -> Prop} (f : forall x, {P x} + {~ P x}) x l,
+  In x l -> P x -> In x (filter_dec f l).
+Proof.
+intros A P f.
+induction l; simpl.
+ intros H.
+ elim H.
+
+ destruct (f a).
+  intro H; elim H; intros; simpl.
+   left.
+   rewrite H0.
+   reflexivity.
+
+   right.
+   apply IHl; auto.
+
+ intros H.
+  elim H; intros.
+   rewrite H0 in n.
+   contradiction.
+
+   apply IHl; auto.
+Qed.
