@@ -89,7 +89,7 @@ induction xs; simpl; intros.
 Qed.
 
 Lemma closure_In: forall A (dec : x_dec A) next x y xs,
-  In y (closure A dec next x xs) -> In y xs.
+  set_In y (closure A dec next x xs) -> set_In y xs.
 Proof.
 intros until xs.
 pattern x, xs, (closure A dec next x xs).
@@ -116,7 +116,7 @@ apply closure_ind; simpl; intros.
 Qed.
 
 Lemma closures_In: forall A (dec : x_dec A) next x xs ys,
-  In x (closures A dec next xs ys) -> In x ys.
+  set_In x (closures A dec next xs ys) -> set_In x ys.
 Proof.
 unfold closures.
 induction xs; simpl; intros.

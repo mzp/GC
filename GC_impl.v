@@ -1,6 +1,7 @@
 Require Import Lists.ListSet.
 Require Import Lists.List.
 Require Import GC.
+Require Import Closure.
 Require Import Util.
 
 Definition marker {A : Type} (dec : x_dec A) (m : Mem) :=
@@ -20,14 +21,6 @@ Definition sweeper {A : Type} (dec : x_dec A) (m : Mem) : Mem :=
           (fun _ => Unmarked)
           (pointer m).
 
-Lemma closure_In: forall A (dec : x_dec A) next x xs,
-  In x (Closure.closure A dec next x xs) -> In x xs.
-Proof.
-intros until xs.
-pattern x,xs,(Closure.closure A dec next x xs).
-apply Closure.closure_ind; simpl; intros; auto; try contradiction.
-
-
 Theorem marker_correct: forall A (dec : x_dec A) m1 m2,
   m2 = marker dec m1 -> Marker dec m1 m2.
 Proof.
@@ -41,5 +34,12 @@ simpl.
 intros.
 unfold marks.
 apply filter_dec_In_intro.
- unfold closures in H0.
+ unfold In in H0.
+ apply closures_In in H0.
+ assumption.
 
+ destruct (set_In_dec dec x).
+  reflexivity.
+
+  contradiction.
+Qed.
