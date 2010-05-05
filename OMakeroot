@@ -1,5 +1,6 @@
 DefineCommandVars()
 
 open CoqBuildRule
+open build/OCaml
 
 .SUBDIRS: .

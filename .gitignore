@@ -9,3 +9,7 @@
 *.swp
 *.png
 *.dot
+*.cm[iox]
+*.o
+gc_test
+*.opt

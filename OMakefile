@@ -1,19 +1,31 @@
+.PHONY: clean doc proof
+.DEFAULT: gc_test
+# ------------------------------
+# Proof part
+# ------------------------------
 FILES[] =
 	Util
+	ExtractUtil
 	Closure
 	GC
 	GC_fact
 	GC_impl
 
-.PHONY: clean graph doc all
-.DEFAULT: all
-
-all: $(CoqProof $(FILES))
-
-clean:
-	rm -rf *.vo *.glob *~ *.omc .omakedb .omakedb.lock
+CoqExtract(myGc, $(FILES))
 
 doc: $(addsuffix .v, $(FILES))
 	mkdir -p doc
 	coqdoc -d doc *.v
+
+# ------------------------------
+# program part
+# ------------------------------
+OCamlProgram(gc_test, myGc main)
+
+# ------------------------------
+# other
+# ------------------------------
+clean:
+	rm -rf *.vo *.glob *~ *.omc .omakedb .omakedb.lock *.cmi *.cmo *.cmx *.o gc_test *.opt
+
 

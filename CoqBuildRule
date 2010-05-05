@@ -7,6 +7,10 @@ public.CoqProof(files) =
 	vo=$(addsuffix .vo,$(files))
 	value $(vo)
 
+public.CoqExtract(targets, files) =
+	export
+	$(addsuffix .ml, $(targets)) $(addsuffix .mli, $(targets)) : $(addsuffix .vo,$(files))
+
 %.vo %.glob: %.v
 	$(COQC) $(COQC_FLAGS) $<
 

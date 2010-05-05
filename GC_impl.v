@@ -3,8 +3,9 @@ Require Import Lists.List.
 Require Import GC.
 Require Import Closure.
 Require Import Util.
+Require Import ExtractUtil.
 
-Definition marker {A : Type} (dec : x_dec A) (m : Mem) :=
+Definition markerPhase {A : Type} (dec : x_dec A) (m : Mem) :=
   let marks :=
     closuresM dec m
   in
@@ -21,10 +22,13 @@ Definition sweeper {A : Type} (dec : x_dec A) (m : Mem) : Mem :=
           (fun _ => Unmarked)
           (pointer m).
 
-Theorem marker_correct: forall A (dec : x_dec A) m1 m2,
-  m2 = marker dec m1 -> Marker dec m1 m2.
+Definition gc {A : Type} (dec : x_dec A) (m : Mem) : Mem :=
+  sweeper dec (markerPhase dec m).
+
+Lemma marker_correct: forall A (dec : x_dec A) m1 m2,
+  m2 = markerPhase dec m1 -> Marker dec m1 m2.
 Proof.
-unfold marker, Marker.
+unfold markerPhase, Marker.
 intros.
 destruct m2.
 inversion H.
@@ -44,7 +48,7 @@ apply filter_dec_In_intro.
   contradiction.
 Qed.
 
-Theorem sweeper_correct: forall A (dec : x_dec A) m1 m2,
+Lemma sweeper_correct: forall A (dec : x_dec A) m1 m2,
   m2 = sweeper dec m1 -> Sweeper dec m1 m2.
 Proof.
 unfold sweeper, Sweeper.
@@ -54,3 +58,18 @@ inversion H.
 repeat split; auto.
 Qed.
 
+Theorem gc_correct : forall A (dec : x_dec A) m1 m2,
+  m2 = gc dec m1 -> GC dec m1 m2.
+Proof.
+unfold gc, GC.
+intros.
+exists (markerPhase dec m1).
+split.
+ apply marker_correct.
+ reflexivity.
+
+ apply sweeper_correct.
+ assumption.
+Qed.
+
+Extraction "myGc.ml" markerPhase sweeper gc.
