@@ -21,25 +21,33 @@ type 'a x_dec = 'a -> 'a -> bool
 
 val filter_dec : ('a1 -> bool) -> 'a1 list -> 'a1 list
 
+val in_dec : 'a1 x_dec -> 'a1 -> 'a1 set -> bool
+
+val union : 'a1 x_dec -> 'a1 set -> 'a1 set -> 'a1 set
+
+val empty : 'a1 set
+
+val remove : 'a1 x_dec -> 'a1 -> 'a1 set -> 'a1 set
+
 type mark =
   | Marked
   | Unmarked
 
 val mark_dec : mark -> mark -> bool
 
-type 'a mem = { roots : 'a set; nodes : 'a set; frees : 
-                'a set; marker : ('a -> mark); pointer : 
+type 'a mem = { nodes : 'a set; roots : 'a set; frees : 
+                'a set; marker : ('a -> mark); next : 
                 ('a -> 'a option) }
 
-val roots : 'a1 mem -> 'a1 set
-
 val nodes : 'a1 mem -> 'a1 set
+
+val roots : 'a1 mem -> 'a1 set
 
 val frees : 'a1 mem -> 'a1 set
 
 val marker : 'a1 mem -> 'a1 -> mark
 
-val pointer : 'a1 mem -> 'a1 -> 'a1 option
+val next : 'a1 mem -> 'a1 -> 'a1 option
 
 val closure_terminate :
   'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 -> 'a1 set -> 'a1 set
@@ -51,9 +59,9 @@ val closures :
 
 val closuresM : 'a1 x_dec -> 'a1 mem -> 'a1 set
 
-val markerPhase : 'a1 x_dec -> 'a1 mem -> 'a1 mem
+val mark_phase : 'a1 x_dec -> 'a1 mem -> 'a1 mem
 
-val sweeper : 'a1 x_dec -> 'a1 mem -> 'a1 mem
+val sweep_phase : 'a1 x_dec -> 'a1 mem -> 'a1 mem
 
 val gc : 'a1 x_dec -> 'a1 mem -> 'a1 mem
 

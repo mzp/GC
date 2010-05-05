@@ -14,7 +14,7 @@ CoqExtract(myGc, $(FILES))
 
 doc: $(addsuffix .v, $(FILES))
 	mkdir -p doc
-	coqdoc -d doc *.v
+	coqdoc --parse-comments --utf8 -d doc *.v
 
 # ------------------------------
 # program part

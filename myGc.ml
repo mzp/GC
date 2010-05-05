@@ -55,6 +55,26 @@ let rec filter_dec dec = function
   | [] -> []
   | x :: xs -> if dec x then x :: (filter_dec dec xs) else filter_dec dec xs
 
+(** val in_dec : 'a1 x_dec -> 'a1 -> 'a1 set -> bool **)
+
+let in_dec dec b b0 =
+  set_In_dec dec b b0
+
+(** val union : 'a1 x_dec -> 'a1 set -> 'a1 set -> 'a1 set **)
+
+let union dec b c =
+  set_union dec b c
+
+(** val empty : 'a1 set **)
+
+let empty =
+  empty_set
+
+(** val remove : 'a1 x_dec -> 'a1 -> 'a1 set -> 'a1 set **)
+
+let remove dec b b0 =
+  set_remove dec b b0
+
 type mark =
   | Marked
   | Unmarked
@@ -70,17 +90,17 @@ let mark_dec m1 m2 =
                      | Marked -> false
                      | Unmarked -> true)
 
-type 'a mem = { roots : 'a set; nodes : 'a set; frees : 
-                'a set; marker : ('a -> mark); pointer : 
+type 'a mem = { nodes : 'a set; roots : 'a set; frees : 
+                'a set; marker : ('a -> mark); next : 
                 ('a -> 'a option) }
-
-(** val roots : 'a1 mem -> 'a1 set **)
-
-let roots x = x.roots
 
 (** val nodes : 'a1 mem -> 'a1 set **)
 
 let nodes x = x.nodes
+
+(** val roots : 'a1 mem -> 'a1 set **)
+
+let roots x = x.roots
 
 (** val frees : 'a1 mem -> 'a1 set **)
 
@@ -90,24 +110,24 @@ let frees x = x.frees
 
 let marker x = x.marker
 
-(** val pointer : 'a1 mem -> 'a1 -> 'a1 option **)
+(** val next : 'a1 mem -> 'a1 -> 'a1 option **)
 
-let pointer x = x.pointer
+let next x = x.next
 
 (** val closure_terminate :
     'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 -> 'a1 set -> 'a1 set **)
 
-let rec closure_terminate dec next x = function
-  | [] -> empty_set
+let rec closure_terminate dec next0 x = function
+  | [] -> empty
   | a :: l ->
-      if set_In_dec dec x (a :: l)
-      then (match next x with
+      if in_dec dec x (a :: l)
+      then (match next0 x with
               | Some y -> x ::
-                  (Obj.magic (fun _ dec0 next0 x0 xs0 _ ->
-                    closure_terminate dec0 next0 x0 xs0) __ dec next y
-                    (set_remove (Obj.magic dec) (Obj.magic x) (a :: l)) __)
-              | None -> (Obj.magic x) :: empty_set)
-      else empty_set
+                  (Obj.magic (fun _ dec0 next1 x0 xs0 _ ->
+                    closure_terminate dec0 next1 x0 xs0) __ dec next0 y
+                    (remove (Obj.magic dec) (Obj.magic x) (a :: l)) __)
+              | None -> (Obj.magic x) :: empty)
+      else empty
 
 (** val closure :
     'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 -> 'a1 set -> 'a1 set **)
@@ -118,33 +138,33 @@ let closure x0 x1 x2 x3 =
 (** val closures :
     'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 set -> 'a1 set -> 'a1 set **)
 
-let closures dec next roots0 nodes0 =
-  fold_right (fun x x0 -> set_union dec x x0) empty_set
-    (map (fun x -> closure dec next x nodes0) roots0)
+let closures dec next0 roots0 nodes0 =
+  fold_right (fun x x0 -> union dec x x0) empty_set
+    (map (fun x -> closure dec next0 x nodes0) roots0)
 
 (** val closuresM : 'a1 x_dec -> 'a1 mem -> 'a1 set **)
 
 let closuresM dec m =
-  closures dec (fun x -> m.pointer x) m.roots m.nodes
+  closures dec (fun x -> m.next x) m.roots m.nodes
 
-(** val markerPhase : 'a1 x_dec -> 'a1 mem -> 'a1 mem **)
+(** val mark_phase : 'a1 x_dec -> 'a1 mem -> 'a1 mem **)
 
-let markerPhase dec m =
-  { roots = m.roots; nodes = m.nodes; frees = m.frees; marker = (fun x ->
-    if set_In_dec dec x (closuresM dec m) then Marked else Unmarked);
-    pointer = (fun x -> m.pointer x) }
+let mark_phase dec m =
+  { nodes = m.nodes; roots = m.roots; frees = m.frees; marker = (fun x ->
+    if in_dec dec x (closuresM dec m) then Marked else Unmarked); next =
+    (fun x -> m.next x) }
 
-(** val sweeper : 'a1 x_dec -> 'a1 mem -> 'a1 mem **)
+(** val sweep_phase : 'a1 x_dec -> 'a1 mem -> 'a1 mem **)
 
-let sweeper dec m =
-  { roots = m.roots; nodes = m.nodes; frees =
-    (set_union dec m.frees
+let sweep_phase dec m =
+  { nodes = m.nodes; roots = m.roots; frees =
+    (union dec m.frees
       (filter_dec (fun n -> mark_dec (m.marker n) Unmarked) m.nodes));
-    marker = (fun x -> Unmarked); pointer = (fun x -> 
-    m.pointer x) }
+    marker = (fun x -> Unmarked); next = (fun x -> 
+    m.next x) }
 
 (** val gc : 'a1 x_dec -> 'a1 mem -> 'a1 mem **)
 
 let gc dec m =
-  sweeper dec (markerPhase dec m)
+  sweep_phase dec (mark_phase dec m)
 
