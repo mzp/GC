@@ -1,7 +1,6 @@
 Require Import Lists.ListSet.
 Require Import Lists.List.
 Require Import GC.
-Require Import Closure.
 Require Import Util.
 Require Import ExtractUtil.
 
@@ -24,6 +23,69 @@ Definition sweeper {A : Type} (dec : x_dec A) (m : Mem) : Mem :=
 
 Definition gc {A : Type} (dec : x_dec A) (m : Mem) : Mem :=
   sweeper dec (markerPhase dec m).
+
+
+Lemma remove_In : forall A (dec : x_dec A) x y xs,
+  set_In y (set_remove dec x xs) -> set_In y xs.
+Proof.
+induction xs; simpl; intros.
+ contradiction.
+
+ destruct (dec x a).
+  right.
+  assumption.
+
+  inversion H.
+   left.
+   assumption.
+
+   apply IHxs in H0.
+   right.
+   assumption.
+Qed.
+
+Lemma closure_In: forall A (dec : x_dec A) next x y xs,
+  set_In y (closure A dec next x xs) -> set_In y xs.
+Proof.
+intros until xs.
+pattern x, xs, (closure A dec next x xs).
+apply closure_ind; simpl; intros.
+ contradiction.
+
+ rewrite <- e.
+ decompose [or] H.
+  rewrite <- H0.
+  assumption.
+
+  contradiction.
+
+ rewrite <- e.
+ decompose [or] H0.
+  rewrite <- H1.
+  assumption.
+
+  apply H in H1.
+  apply remove_In in H1.
+  assumption.
+
+ contradiction.
+Qed.
+
+Lemma closures_In: forall A (dec : x_dec A) next x xs ys,
+  set_In x (closures A dec next xs ys) -> set_In x ys.
+Proof.
+unfold closures.
+induction xs; simpl; intros.
+ contradiction.
+
+ apply set_union_elim in H.
+ elim H; intros.
+  apply closure_In in H0.
+  assumption.
+
+  apply IHxs.
+  assumption.
+Qed.
 
 Lemma marker_correct: forall A (dec : x_dec A) m1 m2,
   m2 = markerPhase dec m1 -> Marker dec m1 m2.

@@ -2,7 +2,7 @@
 Require Import Lists.ListSet.
 Require Import Lists.List.
 Require Import Util.
-Require Import Closure.
+Require Import Recdef.
 
 (** * operations of set *)
 Definition In {A : Type} (elem : A) (sets : set A) :=
@@ -30,19 +30,74 @@ Record Mem {A : Type} := mkMem {
   pointer : A -> option A   (** get next object of the object *)
 }.
 
-Lemma destruct_mem : forall A m,
-  m = mkMem A (roots m) (nodes m) (frees m) (marker m) (pointer m).
-Proof.
-intros.
-destruct m.
-simpl.
-reflexivity.
-Qed.
-
-
 (** * GC *)
 
 (** ** closure *)
+Lemma remove_dec : forall A (dec : x_dec A) x xs,
+  set_In x xs -> length (set_remove dec x xs) < length xs.
+Proof.
+intros.
+induction xs.
+ inversion H.
+
+ simpl.
+ destruct (dec x a).
+  apply Lt.lt_n_Sn.
+
+  simpl.
+  apply Lt.lt_n_S.
+  apply IHxs.
+  inversion H.
+   rewrite H0 in n.
+   assert False.
+    apply n.
+    reflexivity.
+
+    contradiction.
+
+   apply H0.
+Qed.
+
+Function closure (A : Type) (dec : x_dec A) (next : A -> option A) (x : A) (xs : set A) {measure length xs} : set A :=
+  match xs with
+    | nil =>
+      empty_set A
+    | _ =>
+      if set_In_dec dec x xs then
+        match next x with
+          | None   => x :: empty_set A
+          | Some y => x :: closure A dec next y (set_remove dec x xs)
+        end
+      else
+        empty_set A
+  end.
+Proof.
+intros.
+simpl.
+destruct (dec x a).
+ apply Lt.lt_n_Sn.
+
+ simpl.
+ apply Lt.lt_n_S.
+ apply remove_dec.
+ destruct (set_In_dec dec x (a :: l)).
+  inversion s.
+   rewrite H in n.
+   assert False.
+    apply n.
+    reflexivity.
+     contradiction.
+
+     tauto.
+
+  discriminate.
+Qed.
+
+Definition closures (A : Type) (dec : x_dec A) (next : A -> option A) (roots : set A) (nodes : set A) : set A :=
+  fold_right (set_union dec)
+             (empty_set A)
+             (map (fun x => closure A dec next x nodes) roots).
+
 Definition closuresM {A : Type} (dec : x_dec A) (m : Mem) :=
   closures A dec (pointer m) (roots m) (nodes m).
 

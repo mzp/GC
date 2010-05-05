@@ -6,7 +6,6 @@
 FILES[] =
 	Util
 	ExtractUtil
-	Closure
 	GC
 	GC_fact
 	GC_impl

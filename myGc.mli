@@ -21,14 +21,6 @@ type 'a x_dec = 'a -> 'a -> bool
 
 val filter_dec : ('a1 -> bool) -> 'a1 list -> 'a1 list
 
-val closure_terminate :
-  'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 -> 'a1 set -> 'a1 set
-
-val closure : 'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 -> 'a1 set -> 'a1 set
-
-val closures :
-  'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 set -> 'a1 set -> 'a1 set
-
 type mark =
   | Marked
   | Unmarked
@@ -48,6 +40,14 @@ val frees : 'a1 mem -> 'a1 set
 val marker : 'a1 mem -> 'a1 -> mark
 
 val pointer : 'a1 mem -> 'a1 -> 'a1 option
+
+val closure_terminate :
+  'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 -> 'a1 set -> 'a1 set
+
+val closure : 'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 -> 'a1 set -> 'a1 set
+
+val closures :
+  'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 set -> 'a1 set -> 'a1 set
 
 val closuresM : 'a1 x_dec -> 'a1 mem -> 'a1 set
 

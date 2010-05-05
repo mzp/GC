@@ -55,34 +55,6 @@ let rec filter_dec dec = function
   | [] -> []
   | x :: xs -> if dec x then x :: (filter_dec dec xs) else filter_dec dec xs
 
-(** val closure_terminate :
-    'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 -> 'a1 set -> 'a1 set **)
-
-let rec closure_terminate dec next x = function
-  | [] -> empty_set
-  | a :: l ->
-      if set_In_dec dec x (a :: l)
-      then (match next x with
-              | Some y -> x ::
-                  (Obj.magic (fun _ dec0 next0 x0 xs0 _ ->
-                    closure_terminate dec0 next0 x0 xs0) __ dec next y
-                    (set_remove (Obj.magic dec) (Obj.magic x) (a :: l)) __)
-              | None -> (Obj.magic x) :: empty_set)
-      else empty_set
-
-(** val closure :
-    'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 -> 'a1 set -> 'a1 set **)
-
-let closure x0 x1 x2 x3 =
-  closure_terminate x0 x1 x2 x3
-
-(** val closures :
-    'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 set -> 'a1 set -> 'a1 set **)
-
-let closures dec next roots0 nodes0 =
-  fold_right (fun x x0 -> set_union dec x x0) empty_set
-    (map (fun x -> closure dec next x nodes0) roots0)
-
 type mark =
   | Marked
   | Unmarked
@@ -121,6 +93,34 @@ let marker x = x.marker
 (** val pointer : 'a1 mem -> 'a1 -> 'a1 option **)
 
 let pointer x = x.pointer
+
+(** val closure_terminate :
+    'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 -> 'a1 set -> 'a1 set **)
+
+let rec closure_terminate dec next x = function
+  | [] -> empty_set
+  | a :: l ->
+      if set_In_dec dec x (a :: l)
+      then (match next x with
+              | Some y -> x ::
+                  (Obj.magic (fun _ dec0 next0 x0 xs0 _ ->
+                    closure_terminate dec0 next0 x0 xs0) __ dec next y
+                    (set_remove (Obj.magic dec) (Obj.magic x) (a :: l)) __)
+              | None -> (Obj.magic x) :: empty_set)
+      else empty_set
+
+(** val closure :
+    'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 -> 'a1 set -> 'a1 set **)
+
+let closure x0 x1 x2 x3 =
+  closure_terminate x0 x1 x2 x3
+
+(** val closures :
+    'a1 x_dec -> ('a1 -> 'a1 option) -> 'a1 set -> 'a1 set -> 'a1 set **)
+
+let closures dec next roots0 nodes0 =
+  fold_right (fun x x0 -> set_union dec x x0) empty_set
+    (map (fun x -> closure dec next x nodes0) roots0)
 
 (** val closuresM : 'a1 x_dec -> 'a1 mem -> 'a1 set **)
 
